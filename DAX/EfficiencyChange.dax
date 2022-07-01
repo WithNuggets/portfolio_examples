@@ -1,0 +1,33 @@
+// Compares the Resolution Times of the past two weeks to determine the change in raw value and percent change
+
+Efficiency_Change = 
+VAR ResolutionPastWeek = COALESCE(CALCULATE(AVERAGE(TABLE[RESOLUTION]),'M Calendar'[Week Offset] = -1), 0)
+VAR ResolutionPriorWeek = COALESCE(CALCULATE(AVERAGE(TABLE[RESOLUTION]),'M Calendar'[Week Offset] = -2), 0)
+VAR ResolutionChange = ResolutionPastWeek - ResolutionPriorWeek
+VAR EfficiencyPercent = ((ResolutionPastWeek - ResolutionPriorWeek) / ABS(ResolutionPriorWeek)) * 100
+
+RETURN
+    // If one of past two weeks has no data to compare
+    IF(
+        ResolutionPastWeek = BLANK() || ResolutionPriorWeek = BLANK()
+        ,"No comparison can be done due to one of the past two weeks having no data."
+    // If both weeks have no data
+    ,IF(
+        ResolutionPastWeek = 0 && ResolutionPriorWeek = 0
+        , "There have been no resolution times recorded in the past two weeks."
+    // If the most recent week has a longer Resolution Time to the prior week
+    // The displaying visual is a third-party visual that allows the use of HTML coding in the DAX so that the percentage value can be presented in BOLD and a darker color
+    ,IF(
+        ResolutionPastWeek > ResolutionPriorWeek
+        ,CONCATENATE("Your time to resolution last week declined "
+                    ,CONCATENATE("<b><span style='color:#333333'>" & ROUND(ABS(EfficiencyPercent), 2) & "%" & "</span></b>"
+                        ," compared to the prior week."))
+    // If the most recent week has a shorter Resolution Time to the prior week
+    // The displaying visual is a third-party visual that allows the use of HTML coding in the DAX so that the percentage value can be presented in BOLD and a darker color
+    ,IF(
+        ResolutionPastWeek < ResolutionPriorWeek
+        ,CONCATENATE("Your time to resolution last week improved "
+                    ,CONCATENATE("<b><span style='color:#333333'>" & ROUND(ABS(EfficiencyPercent), 2) & "%" & "</span></b>"
+                        ," compared to the prior week."))
+    // If all the prior conditions fail, this error message will display
+    ,"[DATA UNABLE TO BE PULLED]"))))

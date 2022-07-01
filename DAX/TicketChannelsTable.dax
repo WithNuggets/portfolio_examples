@@ -1,0 +1,27 @@
+// This creates a SUMMARIZED table that groups ticket creation by categories
+
+TicketChannels = 
+SUMMARIZE(
+    // Utilizing the primary TABLE, group the results by two particular IDs
+    TABLE, TABLE[ID1],TABLE[ID2]
+    // Calculate the total amount of tickets
+    // This takes the individual categories and SUMS them together
+    , "All", 
+        COALESCE(CALCULATE(COUNT(F_MapTicketDealerTeamCustomer[VALUE]), Tickets[STRING] = "Online" || Tickets[STRING] = "Application",'M Calendar'[Week Offset] = -1), 0)
+        + COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Text",'M Calendar'[Week Offset] = -1), 0)
+        + COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Electronic Mail",'M Calendar'[Week Offset] = -1), 0)
+        + COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Voice", _06_VoiceHubCallsMerge[CallType] = "Answered" || _06_VoiceHubCallsMerge[CallType] = "Missed" || _06_VoiceHubCallsMerge[CallType] = "Voicemail Response",'M Calendar'[Week Offset] = -1), 0)
+        + COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Voice",_06_VoiceHubCallsMerge[CallType] = "Outbound",'M Calendar'[Week Offset] = -1), 0)
+    // Tickets created through a browser or through an installed application
+    , "App", COALESCE(CALCULATE(COUNT(F_MapTicketDealerTeamCustomer[VALUE]), Tickets[STRING] = "Online" || Tickets[STRING] = "Application",'M Calendar'[Week Offset] = -1), 0)
+    // Tickets created through a text message
+    , "Text Message", COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Text",'M Calendar'[Week Offset] = -1), 0)
+    // Tickets created by sending an email
+    , "Email", COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Electronic Mail",'M Calendar'[Week Offset] = -1), 0)
+    // Tickets created through a phone call that were either answered, missed with options selected to create a ticket, or a voicemail was left
+    , "Incoming Calls", COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Voice", _06_VoiceHubCallsMerge[CallType] = "Answered" || _06_VoiceHubCallsMerge[CallType] = "Missed" || _06_VoiceHubCallsMerge[CallType] = "Voicemail Response",'M Calendar'[Week Offset] = -1), 0)
+    // Tickets created through a phone call but outbound to the customer
+    , "Outgoing Calls", COALESCE(CALCULATE(COUNT(Tickets[VALUE]), Tickets[STRING] = "Voice",_06_VoiceHubCallsMerge[CallType] = "Outbound",'M Calendar'[Week Offset] = -1), 0)
+    // Connector creation to link the newly created table back to the main FACT
+    , "Connector", CONCATENATE(TABLE[ID2], TABLE[ID2])
+)

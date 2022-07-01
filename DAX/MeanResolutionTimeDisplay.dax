@@ -1,0 +1,66 @@
+// This DAX setup takes a value related to Resolution Time for a table that is stored in seconds and converts it to a readable string
+
+Resolution_Time = 
+// Pull the Average of the ResolutionTimeInSeconds for most recent week (Week Offset = -1)
+VAR CurrentWeekMeanResolution = CALCULATE(AVERAGE(TABLE[ResolutionTimeInSeconds]), 'M Calendar'[Week Offset] = -1)
+// Convert Seconds to Hours in Decimal Format
+VAR CurrentWeekHours = (CurrentWeekMeanResolution / 3600)
+// Round to Display Hour(s) as Whole Number
+VAR CurrentWeekHoursO = ROUNDDOWN(CurrentWeekHours, 0)
+// Subtract Hour Numbers and Multiply for Minutes in Decimal Format
+VAR CurrentWeekMinutes = (CurrentWeekHours - CurrentWeekHoursO) * 60
+// Round to Display Minute(s) as Whole Number
+VAR CurrentWeekMinutesO = ROUNDDOWN(CurrentWeekMinutes, 0)
+// Subtract Minute Numbers and Multiply for Seconds, Round as Decimal is Not Needed
+VAR CurrentWeekSeconds = ROUND((CurrentWeekMinutes - CurrentWeekMinutesO) * 60, 0)
+// Convert Rounded Hours to Days in Decimal
+VAR CurrentWeekDays = (CurrentWeekHoursO / 24)
+// Round to Display Day as Whole Number
+VAR CurrentWeekDaysO = ROUNDDOWN(CurrentWeekDays, 0)
+// Convert Remaining Hours to Whole Number
+VAR CurrentWeekHoursD = ROUND((CurrentWeekDays - CurrentWeekDaysO) * 24, 0)
+// Count Number of Tickets
+VAR CurrentWeekTickets = IF(CALCULATE(COUNT(TABLE[Ticket_Idx]), 'M Calendar'[Week Offset] = -1) = BLANK(), BLANK(), CALCULATE(COUNT(TABLE2[Ticket_Idx]), 'M Calendar'[Week Offset] = -1)) + 0
+
+RETURN
+IF(
+    // If there are no tickets from the week being pulled, display "N/A"
+    CurrentWeekTickets = 0
+        , "N/A"
+    ,IF(
+    // If the Mean Resolution is BLANK, this means that all tickets being looked at had Immediate resolutions
+        CurrentWeekMeanResolution = BLANK()
+            , "Immediate"
+    // If Only Seconds Need to be Displayed (If Mean Resolution < 60 Seconds)
+    ,IF(
+        CurrentWeekHoursO < 1 && CurrentWeekMinutesO < 1
+            ,CONCATENATE(CurrentWeekSeconds, "s")
+    // If Only Minutes and Seconds Need to be Displayed
+    ,IF(
+        CurrentWeekHoursO < 1
+            ,CONCATENATE(CurrentWeekMinutesO
+                ,CONCATENATE("m "
+                    ,CONCATENATE(CurrentWeekSeconds
+                        ,"s")))
+    // If Hours, Minutes, and Seconds Need to be Displayed
+    ,IF(
+        CurrentWeekHoursO >= 1 && CurrentWeekHoursO < 24
+            ,CONCATENATE(CurrentWeekHoursO
+                ,CONCATENATE("h "
+                    ,CONCATENATE(CurrentWeekMinutesO
+                        ,CONCATENATE("m "
+                            ,CONCATENATE(CurrentWeekSeconds
+                                ,"s")))))
+    // If Days, Hours, Minutes, and Seconds Need to be Displayed
+    ,IF(
+        CurrentWeekHoursO >= 24
+            ,CONCATENATE(CurrentWeekDaysO
+                ,CONCATENATE("d "
+                    ,CONCATENATE(CurrentWeekHoursD
+                        ,CONCATENATE("h "
+                            ,CONCATENATE(CurrentWeekMinutesO
+                                ,CONCATENATE("m "
+                                    ,CONCATENATE(CurrentWeekSeconds
+                                        ,"s")))))))
+    ,"Yikes"
+))))))
